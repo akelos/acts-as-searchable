@@ -8,9 +8,8 @@ class Article extends ActiveRecord
                                                                  'custom'=>'tags',
                                                                  'cdate'=>'created_at',
                                                                  'comments_count')));
-    
-                                                 
-    
+    var $hasMany = 'comments';
+
 }
 
 

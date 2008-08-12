@@ -57,6 +57,9 @@ class ActsAsSearchableInstaller extends AkInstaller
     
     function up_1()
     {
+        if (!AK_PHP5) {
+            die("This plugin is only working on PHP5\n");
+        }
         $this->files = Ak::dir(AK_AASE_PLUGIN_FILES_DIR, array('recurse'=> true));
         empty($this->options['force']) ? $this->checkForCollisions($this->files) : null;
         $this->copyFiles();

@@ -31,11 +31,15 @@ class ActsAsSearchable extends AkObserver
     var $_trigger_update_attributes = array();
     var $_estraier_config = array();
     var $_estraier_connection;
+    var $_use_after_instantiate = false;
     function ActsAsSearchable(&$ActiveRecordInstance, $options = array())
     {
         $this->_instance = &$ActiveRecordInstance;
         $this->observe(&$this->_instance);
         $this->init($options);
+        if (method_exists($ActiveRecordInstance,'afterInstantiate')) {
+            $this->_use_after_instantiate = true;
+        }
         //$ActiveRecordInstance->__acts_as_searchable_original_attributes = array();
         
     }
@@ -123,7 +127,7 @@ class ActsAsSearchable extends AkObserver
         isset($options['limit'])?$cond->set_max($options['limit']):null;
         isset($options['offset'])?$cond->set_skip($options['offset']):null;
         isset($options['order'])?$cond->set_order($options['order']):null;
-        
+        isset($options['raw_matches']) && $options['raw_matches']==true? $raw_matches = true:$raw_matches=false;
         $matches = array();
         $res = &$this->_estraier_connection->search($cond, 0);
 
@@ -132,17 +136,25 @@ class ActsAsSearchable extends AkObserver
             if ($res->doc_num()<1) return $matches;
             
             $db_ids = array();
-            
+            $docs = array();
             for($i=0;$i<$res->doc_num();$i++) {
                 $doc = &$res->get_doc($i);
-                $db_ids[] = $doc->attr('db_id');
+                if ($raw_matches) {
+                    $docs[] = clone $doc;
+                } else {
+                    $db_ids[] = $doc->attr('db_id');
+                }
             }
-            if (!isset($find_options['conditions'])) {
-                $find_options['conditions']='id IN ('.implode(',',$db_ids).')';
+            if ($raw_matches) {
+                $matches = &$docs;
             } else {
-                $find_options['conditions'].=' AND id IN ('.implode(',',$db_ids).')';
+                if (!isset($find_options['conditions'])) {
+                    $find_options['conditions']='id IN ('.implode(',',$db_ids).')';
+                } else {
+                    $find_options['conditions'].=' AND id IN ('.implode(',',$db_ids).')';
+                }
+                $matches = &$record->find('all',$find_options);
             }
-            $matches = &$record->find('all',$find_options);
             if (!$matches) $matches = array();
             
             return $matches;
@@ -207,23 +219,20 @@ class ActsAsSearchable extends AkObserver
     {
         $this->_registerUnchangedAttributeValues(&$record);
     }
-    function xafterSave(&$record)
-    {
-        return $this->_clearChangedAttributes(&$record);
-    }
     
     function _addToIndex(&$record)
     {
         $doc = &$this->_documentObject(&$record);
-        if (!$this->_estraier_connection->put_doc($doc)) {
-            $stack = &EstraierPure_Utility::errorstack();
+        if (!($res=$this->_estraier_connection->put_doc($doc))) {
+            /**$stack = &EstraierPure_Utility::errorstack();
             $errorText = 'Unknown';
             if ($stack->hasErrors()) {
                 $errorText=$stack->getErrors();
                 if (is_array($errorText)) {
                     $errorText = implode(",\n", $errors);
                 }
-            }
+            }*/
+            $errorText = 'Could not save doc';
             $record->addErrorToBase(Ak::t("Could not index record. Error: \n\n %error",array('%error'=>$errorText)));
             return false;
         }
@@ -232,7 +241,7 @@ class ActsAsSearchable extends AkObserver
     function _updateIndex(&$record, $force = false)
     {
         $res = true;
-        if ($force || $this->_changed(&$record)) {
+        if (!$this->_use_after_instantiate || $force || $this->_changed(&$record)) {
             $this->_removeFromIndex(&$record);
             $res = $this->_addToIndex(&$record);
             
@@ -256,7 +265,8 @@ class ActsAsSearchable extends AkObserver
         $checkAttributes = $attribute != null? array($attribute):$this->_trigger_update_attributes;
         foreach ($checkAttributes as $attribute) {
             if (isset($record->acts_as_searchable_original_attributes[$attribute])) {
-                $attributes = $record->getAttributes();
+                $attributes = $record->getColumns();
+                $attributes = array_keys($attributes);
                 if (in_array($attribute,$attributes)) {
                     $currentValue = $record->get($attribute);
                 } else if (method_exists($record, $attribute)) {
@@ -304,7 +314,8 @@ class ActsAsSearchable extends AkObserver
     
     function _connectEstraier()
     {
-        require_once(AK_VENDOR_DIR.DS.'pear'.DS.'EstraierPure'.DS.'estraierpure.php');
+        require_once(dirname(__FILE__).DS.'vendor'.DS.'EstraierPure'.DS.'Node.php');
+        //require_once(AK_VENDOR_DIR.DS.'pear'.DS.'EstraierPure'.DS.'estraierpure.php');
         $this->_estraier_connection = &new EstraierPure_Node;
         @$this->_estraier_connection->set_url("http://{$this->_estraier_config['host']}:{$this->_estraier_config['port']}/node/{$this->_estraier_config['node']}");
         @$this->_estraier_connection->set_auth($this->_estraier_config['user'],$this->_estraier_config['password']);
