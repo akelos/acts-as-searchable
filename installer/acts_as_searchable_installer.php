@@ -12,6 +12,14 @@ class ActsAsSearchableInstaller extends AkInstaller
         }
         return $matches;
     }
+    ','friendlySearch'=>'
+    function friendlySearch($query, $options = array()) {
+        $matches = array();
+        if (isset($this->searchable) && method_exists($this->searchable,"friendlySearch")) {
+            $matches = &$this->searchable->friendlySearch(&$this, $query, $options);
+        }
+        return $matches;
+    }
     ','clearIndex'=>'
     function clearIndex() {
         if (isset($this->searchable) && method_exists($this->searchable,"clearIndex")) {

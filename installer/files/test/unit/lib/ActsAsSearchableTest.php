@@ -13,6 +13,20 @@ class ActsAsSearchabelTest extends AkUnitTest
         $this->create_articles();
     }
     
+    function test_friendly_search()
+    {
+        $this->reindex();
+        $results = $this->Article->friendlySearch('article1 +body1');
+        $this->assertTrue(1,count($results));
+        $this->assertEqual(1,$results[0]->id);
+        
+        $results = $this->Article->friendlySearch('article1 article2');
+        $this->assertTrue(2,count($results));
+        $this->assertEqual(1,$results[0]->id);
+        $this->assertEqual(2,$results[1]->id);
+        
+    }
+    
     function test_defaults()
     {
         $expectedConfig = array('node'=>'akelos',
@@ -256,11 +270,13 @@ class ActsAsSearchabelTest extends AkUnitTest
         $article->save();
         $this->assertFalse($article->searchable->_changed(&$article));
     }
-    
+
     function reindex()
     {
         $this->Article->reindex();
         sleep(5);
     }
+    
+    
 }
 ?>
