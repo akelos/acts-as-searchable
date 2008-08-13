@@ -50,12 +50,6 @@ class ActsAsSearchableInstaller extends AkInstaller
         }
         return $doc;
     }
-    ','afterInstantiate'=>'
-    function afterInstantiate() {
-        if (isset($this->searchable) && method_exists($this->searchable,"instantiate")) {
-            $this->searchable->instantiate(&$this);
-        }
-    }
     ');
     function down_1()
     {

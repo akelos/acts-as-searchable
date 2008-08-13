@@ -143,7 +143,7 @@ class ActsAsSearchable extends AkObserver
 
         $this->_connectEstraier();
     }
-    function instantiate(&$record)
+    function afterInstantiate(&$record)
     {
         $this->_buildTriggerUpdateAttributes();
         return $this->_registerUnchangedAttributeValues(&$record);
@@ -242,10 +242,6 @@ class ActsAsSearchable extends AkObserver
     function afterDestroy(&$record)
     {
         return $this->_removeFromIndex(&$record);
-    }
-    function afterInstantiate(&$record)
-    {
-        $this->_registerUnchangedAttributeValues(&$record);
     }
 
     function _addToIndex(&$record)
