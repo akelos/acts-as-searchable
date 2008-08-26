@@ -1,8 +1,9 @@
 <?php
 require_once(AK_BASE_DIR.DS.'app'.DS.'vendor'.DS.'plugins'.DS.'acts_as_searchable'.DS.'lib'.DS.'ActsAsSearchable.php');
-require_once(AK_LIB_DIR.DS.'AkDateParser.php');
+require_once(AK_LIB_DIR.DS.'AkDate.php');
 class ActsAsSearchabelTest extends AkUnitTest
 {
+    var $fixtures = array('articles','comments');
     var $_articles_count = 10;
     
     function setUp()
@@ -10,8 +11,8 @@ class ActsAsSearchabelTest extends AkUnitTest
         $this->installAndIncludeModels('Article');
         $this->installAndIncludeModels('Comment');
         $this->searchable = new ActsAsSearchable(&$this->Article);
-        $this->populateTables('articles');
-        $this->populateTables('comments');
+        //$this->populateTables('articles');
+        //$this->populateTables('comments');
     }
     
     function _test_friendly_search()
@@ -19,12 +20,12 @@ class ActsAsSearchabelTest extends AkUnitTest
         $this->reindex();
         $results = $this->Article->friendlySearch('article1 +body1');
         $this->assertTrue(1,count($results));
-        $this->assertEqual(1,$results[0]->id);
+        $this->assertEqual($this->articles['first']->id,$results[0]->id);
         
         $results = $this->Article->friendlySearch('article1 article2');
         $this->assertTrue(2,count($results));
-        $this->assertEqual(1,$results[0]->id);
-        $this->assertEqual(2,$results[1]->id);
+        $this->assertEqual($this->articles['first']->id,$results[0]->id);
+        $this->assertEqual($this->articles['second']->id,$results[1]->id);
         
     }
     
@@ -80,11 +81,11 @@ class ActsAsSearchabelTest extends AkUnitTest
         $this->Article->clearIndex();
         $index = $this->Article->estraierIndex();
         $this->assertEqual(0,count($index));
-    }
+     }
     
     function test_after_update_hook()
     {
-        $article = &$this->Article->findFirst();
+        $article = &$this->articles['first'];
         $article->body='test';
         $article->save();
         
@@ -115,7 +116,7 @@ class ActsAsSearchabelTest extends AkUnitTest
     
     function test_after_destroy_hook()
     {
-        $article = &$this->Article->findFirst();
+        $article = $this->articles['first'];
         $article->destroy();
         $this->assertTrue(false==$article->estraierDoc());
     }
@@ -132,7 +133,7 @@ class ActsAsSearchabelTest extends AkUnitTest
         $this->reindex();
         $matches = $this->Article->fulltextSearch('',array('attributes'=>'custom STRINC akelos'));
         $this->assertEqual(2,count($matches));
-        $this->assertEqual(array(2,3),array($matches[0]->id,$matches[1]->id));
+        $this->assertEqual(array($this->articles['second']->id,$this->articles['third']->id),array($matches[0]->id,$matches[1]->id));
         
     }
     
@@ -141,7 +142,7 @@ class ActsAsSearchabelTest extends AkUnitTest
         $this->reindex();
         $matches = $this->Article->fulltextSearch('',array('attributes'=>array('custom STRINC akelos','@title STRBW lorem')));
         $this->assertEqual(1,count($matches));
-        $this->assertEqual(array(3),array($matches[0]->id));
+        $this->assertEqual(array($this->articles['third']->id),array($matches[0]->id));
     }
     
     function test_fulltext_search_with_number_attribute()
@@ -149,30 +150,30 @@ class ActsAsSearchabelTest extends AkUnitTest
         $this->reindex();
         $matches = $this->Article->fulltextSearch('',array('attributes'=>array('comments_count NUMGE 1')));
         $this->assertEqual(1,count($matches));
-        $this->assertEqual(1,$matches[0]->id);
+        $this->assertEqual($this->articles['first']->id,$matches[0]->id);
     }
     
     function test_fulltext_search_with_date_attribute()
     {
         $this->reindex();
-        $matches = $this->Article->fulltextSearch('ipsum',array('attributes'=>array('@cdate NUMLE '.AkDateParser::parse('1.year.from.now'))));
+        $matches = $this->Article->fulltextSearch('ipsum',array('attributes'=>array('@cdate NUMLE '.AkDate::parse('1.year.from.now'))));
         $this->assertEqual(1,count($matches));
-        $this->assertEqual(3,$matches[0]->id);
+        $this->assertEqual($this->articles['third']->id,$matches[0]->id);
         
-        $matches = $this->Article->fulltextSearch('',array('attributes'=>array('@cdate NUMLE '.AkDateParser::parse('6.days.ago'))));
+        $matches = $this->Article->fulltextSearch('',array('attributes'=>array('@cdate NUMLE '.AkDate::parse('6.days.ago'))));
         $this->assertEqual(1,count($matches));
-        $this->assertEqual(1,$matches[0]->id);
+        $this->assertEqual($this->articles['first']->id,$matches[0]->id);
     }
     
     function test_fulltext_search_with_ordering()
     {
         $this->reindex();
-        $expectedIds = array(1,2,3);
+        $expectedIds = array($this->articles['first']->id,$this->articles['second']->id,$this->articles['third']->id);
         $matches = $this->Article->fulltextSearch('',array('order'=>'db_id NUMA','limit'=>3,'raw_matches'=>true));
         $ids = array($matches[0]->attr('db_id'),$matches[1]->attr('db_id'),$matches[2]->attr('db_id'));
         $this->assertEqual($expectedIds,$ids);
         
-        $expectedIds = array(3,2,1);
+        $expectedIds = array($this->articles['third']->id,$this->articles['second']->id,$this->articles['first']->id);
         $matches = $this->Article->fulltextSearch('',array('order'=>'db_id NUMD','limit'=>3,'raw_matches'=>true));
         $ids = array($matches[0]->attr('db_id'),$matches[1]->attr('db_id'),$matches[2]->attr('db_id'));
         $this->assertEqual($expectedIds,$ids);
@@ -181,22 +182,22 @@ class ActsAsSearchabelTest extends AkUnitTest
     function test_fulltext_search_with_pagination()
     {
         $this->reindex();
-        $expectedIds = array(1,2);
+        $expectedIds = array($this->articles['first']->id,$this->articles['second']->id);
         $matches = $this->Article->fulltextSearch('',array('order'=>'db_id NUMA','limit'=>2,'raw_matches'=>true));
         $ids = array($matches[0]->attr('db_id'),$matches[1]->attr('db_id'));
         $this->assertEqual($expectedIds,$ids);
         
-        $expectedIds = array(3,2);
+        $expectedIds = array($this->articles['third']->id,$this->articles['second']->id);
         $matches = $this->Article->fulltextSearch('',array('order'=>'db_id NUMD','limit'=>2,'raw_matches'=>true));
         $ids = array($matches[0]->attr('db_id'),$matches[1]->attr('db_id'));
         $this->assertEqual($expectedIds,$ids);
         
-        $expectedIds = array(2,3);
+        $expectedIds = array($this->articles['second']->id,$this->articles['third']->id);
         $matches = $this->Article->fulltextSearch('',array('order'=>'db_id NUMA','limit'=>2,'offset'=>1,'raw_matches'=>true));
         $ids = array($matches[0]->attr('db_id'),$matches[1]->attr('db_id'));
         $this->assertEqual($expectedIds,$ids);
         
-        $expectedIds = array(2,1);
+        $expectedIds = array($this->articles['second']->id,$this->articles['first']->id);
         $matches = $this->Article->fulltextSearch('',array('order'=>'db_id NUMD','limit'=>2,'offset'=>1,'raw_matches'=>true));
         $ids = array($matches[0]->attr('db_id'),$matches[1]->attr('db_id'));
         $this->assertEqual($expectedIds,$ids);
@@ -215,13 +216,13 @@ class ActsAsSearchabelTest extends AkUnitTest
         $this->reindex();
         $matches = $this->Article->fulltextSearch('',array('find'=>array('order'=>'title ASC')));
         $this->assertEqual(3,count($matches));
-        $expectedIds = array(1,3);
+        $expectedIds = array($this->articles['first']->id,$this->articles['third']->id);
         $ids = array($matches[0]->id,$matches[1]->id);
         $this->assertEqual($expectedIds, $ids);
         
         $matches = $this->Article->fulltextSearch('',array('find'=>array('order'=>'title DESC')));
         $this->assertEqual(3,count($matches));
-        $expectedIds = array(2,3);
+        $expectedIds = array($this->articles['second']->id,$this->articles['third']->id);
         $ids = array($matches[0]->id,$matches[1]->id);
         $this->assertEqual($expectedIds, $ids);
         
