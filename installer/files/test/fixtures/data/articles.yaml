@@ -1,11 +1,11 @@
-<?php require_once(AK_LIB_DIR.DS.'AkDate.php'); ?>
+<?php require_once(AK_LIB_DIR.DS.'AkType.php'); ?>
 first:
   id: 1
   title: first article
   body: Mauris a quam. Cras ornare lectus quis justo. Duis laoreet facilisis dui. Nunc dui. Proin consectetuer. 
   tags: php
   comments_count: 1
-  created_at: <?php echo AkDate::render('5.months.ago');?>
+  created_at: <?php echo AkT(5,'months.ago.toString(db)');?>
   
 second:
   id: 2
@@ -13,7 +13,7 @@ second:
   body: Cras mollis. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.
   tags: php akelos
   comments_count: 0
-  created_at: <?php echo AkDate::render('5.days.ago');?>
+  created_at: <?php echo AkT(5,'days.ago.toString(db)');?>
   
 third:
   id: 3
@@ -21,4 +21,4 @@ third:
   body: Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Proin vestibulum vestibulum ipsum.
   tags: php akelos javascript
   comments_count: 0
-  created_at: <?php echo AkDate::render('5.minutes.ago');?>
+  created_at: <?php echo AkT(5,'minutes.ago.toString(db)');?>
