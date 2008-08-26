@@ -1,6 +1,6 @@
 <?php
 require_once(AK_BASE_DIR.DS.'app'.DS.'vendor'.DS.'plugins'.DS.'acts_as_searchable'.DS.'lib'.DS.'ActsAsSearchable.php');
-require_once(AK_LIB_DIR.DS.'AkDate.php');
+require_once(AK_LIB_DIR.DS.'AkType.php');
 class ActsAsSearchabelTest extends AkUnitTest
 {
     var $fixtures = array('articles','comments');
@@ -156,11 +156,13 @@ class ActsAsSearchabelTest extends AkUnitTest
     function test_fulltext_search_with_date_attribute()
     {
         $this->reindex();
-        $matches = $this->Article->fulltextSearch('ipsum',array('attributes'=>array('@cdate NUMLE '.AkDate::parse('1.year.from.now'))));
+        $condition = '@cdate NUMLE '.AkT(1,'year.from.now');
+        $matches = $this->Article->fulltextSearch('ipsum',array('attributes'=>array($condition)));
         $this->assertEqual(1,count($matches));
         $this->assertEqual($this->articles['third']->id,$matches[0]->id);
         
-        $matches = $this->Article->fulltextSearch('',array('attributes'=>array('@cdate NUMLE '.AkDate::parse('6.days.ago'))));
+        $condition = '@cdate NUMLE '.AkT(6,'days.ago');
+        $matches = $this->Article->fulltextSearch('',array('attributes'=>array($condition)));
         $this->assertEqual(1,count($matches));
         $this->assertEqual($this->articles['first']->id,$matches[0]->id);
     }
